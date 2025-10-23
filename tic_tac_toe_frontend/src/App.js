@@ -1,47 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import React, { useMemo, useState } from 'react';
 import './App.css';
+import Board from './components/Board';
+import StatusBar from './components/StatusBar';
+import Controls from './components/Controls';
+import { calculateWinner, isDraw, nextPlayer, initialState } from './utils/game';
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
+  /** Root app composing header, board, status, and controls. */
+  const [state, setState] = useState(initialState());
 
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+  const { winner, line } = useMemo(
+    () => calculateWinner(state.squares),
+    [state.squares]
+  );
+
+  const gameOver = winner !== null || isDraw(state.squares);
 
   // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  const handleSquareClick = (i) => {
+    /** Handles a click on square i. No-op if game over or square filled. */
+    if (state.squares[i] || gameOver) return;
+    const next = state.squares.slice();
+    next[i] = nextPlayer(state.xIsNext);
+    setState({
+      squares: next,
+      xIsNext: !state.xIsNext,
+      gameOver: false,
+      winningLine: null,
+    });
   };
 
+  // PUBLIC_INTERFACE
+  const handleReset = () => {
+    /** Resets the game board to initial state. */
+    setState(initialState());
+  };
+
+  const statusText = winner
+    ? `Winner: ${winner}`
+    : isDraw(state.squares)
+      ? 'Draw! No more moves.'
+      : `Next: ${nextPlayer(state.xIsNext)}`;
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app">
+      <main className="shell" aria-label="Tic Tac Toe game">
+        <header className="header">
+          <h1 className="title">Tic Tac Toe</h1>
+          <p className="subtitle">Ocean Professional • Two-player local play</p>
+        </header>
+
+        <StatusBar statusText={statusText} />
+
+        <Board
+          squares={state.squares}
+          onSquareClick={handleSquareClick}
+          winningLine={winner ? line : null}
+          gameOver={gameOver}
+        />
+
+        <Controls onReset={handleReset} disabled={false} />
+      </main>
     </div>
   );
 }
